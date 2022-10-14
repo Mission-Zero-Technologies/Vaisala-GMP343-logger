@@ -2,46 +2,79 @@
 #include <fstream>
 #include "rs232.h"
 #include <Windows.h>
+#include "flag_manager.h"
+#include <ctime>
+#include <future>
+#include "sensor_interface.h"
 
-int main()
+int help()
 {
-	int portNumber{RS232_GetPortnr("COM5")};
+	std::cout << "Usage: co2-logger [options] output_filename\n";
+	std::cout << "Polls the Vaisala GMP343 every second and logs csv data with timestamps to output file, as well as stdout. Press \"x\" followed by enter to stop.\n";
+	std::cout << "Options:\n";
+	std::cout << "-c\t--comport\tSet the name of the COM port that the CO2 sensor is connected to eg. \"COM1\". Default is COM5\n";
+	std::cout << "-h\t--help\tPrints this help page and exits\n";
+	std::cout << "-q\t--quiet\tSuppresses output to stdout\n";
+	return 0;
+}
 
-	if (RS232_OpenComport(portNumber, 19200, "8N1", 0))
+
+int main(int argc, char **argv)
+{
+	FlagManager flag;
+	flag.SetFlag('c', "comport", true);
+	flag.SetFlag('h', "help", false);
+	flag.SetFlag('q', "quiet", false);
+
+	try
 	{
-		std::cerr << "COM port could not be opened\n";
+		flag.Init(argc, argv);
+	}
+	catch (const char *e)
+	{
+		std::cerr << e << '\n';
 		return 1;
 	}
 
-	const char *send{"SEND\r"};
-	RS232_cputs(portNumber, send);
-	
-	Sleep(100);
-
-	unsigned char *input_buffer{new unsigned char[256]};
-	int n{RS232_PollComport(portNumber, input_buffer, 256)};
-	//Sleep(100);
-	//std::cout << n << '\n';
-	// Number starts at index 8. Discard the final 3 characters.
-	if (n > 0)
+	if (flag.IsRaised('h'))
 	{
-		for (int x{8}; x < n - 3; x++)
-		{
-			std::cout << (char)input_buffer[x];
-		}
-		std::cout << '\n';
-		//for (int i{0}; i < n; i++)
-		//{
-		//	if (input_buffer[i] < 32)
-		//	{
-		//		input_buffer[i] = '.';
-		//	}
-		//}
-
-		//std::cout << (char *)input_buffer << '\n';
+		return help();
 	}
 
-	delete[] input_buffer;
-	RS232_CloseComport(portNumber);
+	if (flag.ArgCount("nonflags") != 1)
+	{
+		std::cerr << "Unexpected arguments given. Usage: co2-logger [options] output_filename\n";
+		return 1;
+	}
+
+	SensorInterface *sensor;
+
+	bool quiet{false};
+
+	if (flag.IsRaised('q'))
+	{
+		quiet = true;
+	}
+	
+	try
+	{
+		if (flag.IsRaised('c'))
+		{
+			 sensor = new SensorInterface(flag.FetchArg('c', 0), flag.FetchArg('-', 0), quiet);
+		}
+		else
+		{
+			sensor = new SensorInterface("COM5", flag.FetchArg('-', 0), quiet);
+		}
+	}
+	catch (const char *e)
+	{
+		std::cerr << "\"" << e << "\" could not be opened\n";
+		return 1;
+	}
+
+	sensor->StartLogging();
+
+	delete sensor;
 	return 0;
 }
