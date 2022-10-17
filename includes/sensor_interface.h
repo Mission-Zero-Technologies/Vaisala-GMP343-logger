@@ -6,17 +6,19 @@
 class SensorInterface
 {
     public:
-        SensorInterface(const char *ComPortName, const char *filename, bool ipQuiet);
+        SensorInterface(const char *ComPortName, const char *filename, bool ipQuiet, bool ipDiscard);
         char* Read();
         ~SensorInterface();
         void StartLogging();
 
     private:
         int portNumber;
-        bool cont, quiet;
+        bool cont, quiet, discard;
         const char *send{"SEND\r"};
         std::ofstream Writer;
         void loggingLoop();
+        bool isWhitespace(const char ip);
+        char* scrubWhitespace(const char *ip);
 };
 
 #endif

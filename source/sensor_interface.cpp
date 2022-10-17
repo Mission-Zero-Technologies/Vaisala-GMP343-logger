@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 
-SensorInterface::SensorInterface(const char *ComPortName, const char *filename, bool ipQuiet)
+SensorInterface::SensorInterface(const char *ComPortName, const char *filename, bool ipQuiet, bool ipDiscard)
 {
     portNumber = RS232_GetPortnr(ComPortName);
 
@@ -15,13 +15,17 @@ SensorInterface::SensorInterface(const char *ComPortName, const char *filename, 
 		throw ComPortName;
 	}
 
-    Writer.open(filename);
-    if (Writer.fail())
+    if (!ipDiscard)
     {
-        throw filename;
+        Writer.open(filename);
+        if (Writer.fail())
+        {
+            throw filename;
+        }
     }
 
     quiet = ipQuiet;
+    discard = ipDiscard;
 }
 
 SensorInterface::~SensorInterface()
@@ -30,10 +34,49 @@ SensorInterface::~SensorInterface()
     Writer.close();
 }
 
+bool SensorInterface::isWhitespace(const char ip)
+{
+    if (ip == ' ' || ip == '\t' || ip == '\n')
+    {
+        return true;
+    }
+    return false;
+}
+
+char* SensorInterface::scrubWhitespace(const char *ip)
+{
+    int opLen{0}; //I don't know why this is -1 but it works lol
+    int index{0};
+    while (ip[index] != '\0')
+    {
+        if (!isWhitespace(ip[index]))
+        {
+            opLen++;
+        }
+        index++;
+    }
+
+    char *op{new char[opLen + 1]};
+
+    index = 0;
+    int opIndex{0};
+    while (ip[index] != '\0')
+    {
+        if (!isWhitespace(ip[index]))
+        {
+            op[opIndex] = ip[index];
+            opIndex++;
+        }
+        index++;
+    }
+    op[opLen] = '\0';
+    return op;
+}
+
 char* SensorInterface::Read()
 {
 	RS232_cputs(portNumber, send);
-	Sleep(100);
+	Sleep(1000);
 
     unsigned char *input_buffer{new unsigned char[256]};
 	int ResponseLength{RS232_PollComport(portNumber, input_buffer, 256)};
@@ -42,12 +85,13 @@ char* SensorInterface::Read()
 
     if (ResponseLength > 0)
     {
-        for (int n{8}; n < ResponseLength; n++)
+        for (int n{5}; n < ResponseLength; n++)
         {
             if ((char)input_buffer[n] == '\r')
             {
                 break;
             }
+
             opLen++;
         }
 
@@ -55,7 +99,7 @@ char* SensorInterface::Read()
 
         for (int n{0}; n < opLen; n++)
         {
-            op[n] = (char)input_buffer[n + 8];
+            op[n] = (char)input_buffer[n + 5];
         }
         op[opLen] = '\0';
     }
@@ -77,17 +121,22 @@ void SensorInterface::loggingLoop()
     {
         long int timestamp = static_cast<long int> (time(nullptr)) - initialTime;
 
-        char *op{Read()};
+        char *raw_output{Read()};
+        char *op{scrubWhitespace(raw_output)};
 
-        Writer << timestamp << ',' << op << '\n';
+        delete[] raw_output;
+
+        if (!discard)
+        {
+            Writer << timestamp << ',' << op << '\n';
+        }
+
         if (!quiet)
         {
             std::cout << timestamp << ',' << op << '\n';
         }
-        
-        delete[] op;
 
-        Sleep(900);
+        delete[] op;
     }
 }
 

@@ -12,7 +12,8 @@ int help()
 	std::cout << "Usage: co2-logger [options] output_filename\n";
 	std::cout << "Polls the Vaisala GMP343 every second and logs csv data with timestamps to output file, as well as stdout. Press \"x\" followed by enter to stop.\n";
 	std::cout << "Options:\n";
-	std::cout << "-c\t--comport\tSet the name of the COM port that the CO2 sensor is connected to eg. \"COM1\". Default is COM5\n";
+	std::cout << "-c\t--comport\tSet the name of the COM port that the CO2 sensor is connected to eg. \"COM1\" or \"ttyS5\". Default is COM5\n";
+	std::cout << "-d\t--discard\tDoes not log any data to file\n";
 	std::cout << "-h\t--help\tPrints this help page and exits\n";
 	std::cout << "-q\t--quiet\tSuppresses output to stdout\n";
 	return 0;
@@ -25,6 +26,7 @@ int main(int argc, char **argv)
 	flag.SetFlag('c', "comport", true);
 	flag.SetFlag('h', "help", false);
 	flag.SetFlag('q', "quiet", false);
+	flag.SetFlag('d', "discard", false);
 
 	try
 	{
@@ -41,30 +43,36 @@ int main(int argc, char **argv)
 		return help();
 	}
 
-	if (flag.ArgCount("nonflags") != 1)
+	if (flag.ArgCount("nonflags") != 1 && !flag.IsRaised('d'))
 	{
-		std::cerr << "Unexpected arguments given. Usage: co2-logger [options] output_filename\n";
+		std::cerr << "Unexpected number of arguments given. Usage: co2-logger [options] output_filename\n";
 		return 1;
 	}
 
 	SensorInterface *sensor;
 
 	bool quiet{false};
+	bool discard{false};
 
 	if (flag.IsRaised('q'))
 	{
 		quiet = true;
+	}
+
+	if (flag.IsRaised('d'))
+	{
+		discard = true;
 	}
 	
 	try
 	{
 		if (flag.IsRaised('c'))
 		{
-			 sensor = new SensorInterface(flag.FetchArg('c', 0), flag.FetchArg('-', 0), quiet);
+			 sensor = new SensorInterface(flag.FetchArg('c', 0), flag.FetchArg('-', 0), quiet, discard);
 		}
 		else
 		{
-			sensor = new SensorInterface("COM5", flag.FetchArg('-', 0), quiet);
+			sensor = new SensorInterface("COM5", flag.FetchArg('-', 0), quiet, discard);
 		}
 	}
 	catch (const char *e)
