@@ -10,6 +10,7 @@ class SensorInterface
         char* Read();
         ~SensorInterface();
         void StartLogging();
+        void post(const char *ip);
 
     private:
         int portNumber;
@@ -19,6 +20,7 @@ class SensorInterface
         void loggingLoop();
         bool isWhitespace(const char ip);
         char* scrubWhitespace(const char *ip);
+        char* appendCarriageReturn(const char *ip);
 };
 
 #endif

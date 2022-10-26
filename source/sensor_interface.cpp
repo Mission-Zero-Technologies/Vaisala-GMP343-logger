@@ -5,6 +5,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include "fl2_utils.h"
 
 SensorInterface::SensorInterface(const char *ComPortName, const char *filename, bool ipQuiet, bool ipDiscard)
 {
@@ -76,7 +77,7 @@ char* SensorInterface::scrubWhitespace(const char *ip)
 char* SensorInterface::Read()
 {
 	RS232_cputs(portNumber, send);
-	Sleep(1000);
+	Sleep(2000);
 
     unsigned char *input_buffer{new unsigned char[256]};
 	int ResponseLength{RS232_PollComport(portNumber, input_buffer, 256)};
@@ -159,4 +160,80 @@ void SensorInterface::StartLogging()
 
     logger.detach();
 
+}
+
+char* SensorInterface::appendCarriageReturn(const char *ip)
+{
+    int ipLen{fl2_utils::len(ip)};
+    char *op{new char[ipLen + 2]};
+
+    for (int n{0}; n < ipLen; n++)
+    {
+        op[n] = ip[n];
+    }
+    op[ipLen] = '\r';
+    op[ipLen +  1] = '\0';
+    return op;
+}
+
+void SensorInterface::post(const char *ip)
+{
+    char *post{appendCarriageReturn(ip)};
+    RS232_cputs(portNumber, post);
+    delete[] post;
+    post = nullptr;
+	Sleep(500);
+
+    //const int bufferLen{2048};
+
+    unsigned char *input_buffer{new unsigned char[2048]};
+	int ResponseLength{RS232_PollComport(portNumber, input_buffer, 2048)};
+
+
+    if (ResponseLength > 0)
+    {
+        /*
+        int opLen{0};
+        int crCount{0};
+
+        for (int n{0}; n < ResponseLength; n++)
+        {   
+            if ((char)input_buffer[n] != '\r')
+            {
+                opLen++;
+            }
+            else
+            {
+                if (crCount >= 1)
+                {
+                    break;
+                }
+                crCount++;
+            }
+        }
+
+        char *op{new char[opLen + 1]};
+        int opIndex{0};
+
+        for (int n{0}; n < ResponseLength; n++)
+        {
+            if ((char)input_buffer[n] != '\r')
+            {   
+                op[opIndex] = (char)input_buffer[n];
+                opIndex++;
+            }
+        }
+        op[opLen] = '\0';
+
+        std::cout << op << '\n';
+
+        delete[] op;
+        */
+        input_buffer[ResponseLength] = '\0';
+        std::cout << (char*)input_buffer << '\n';
+    }
+    else
+    {
+        std::cout << "No response received\n";
+    }
 }
