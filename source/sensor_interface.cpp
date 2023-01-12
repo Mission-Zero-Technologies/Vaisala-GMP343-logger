@@ -46,7 +46,7 @@ bool SensorInterface::isWhitespace(const char ip)
 
 char* SensorInterface::scrubWhitespace(const char *ip)
 {
-    int opLen{0}; //I don't know why this is -1 but it works lol
+    int opLen{0};
     int index{0};
     while (ip[index] != '\0')
     {
@@ -74,9 +74,18 @@ char* SensorInterface::scrubWhitespace(const char *ip)
     return op;
 }
 
+bool SensorInterface::isNumber(const char ip)
+{
+    int ascii{(int) ip};
+    if (ascii >= 48 && ascii <= 57)
+    {
+        return true;
+    }
+    return false;
+}
+
 char* SensorInterface::Read()
 {
-	RS232_cputs(portNumber, send);
 	Sleep(2000);
 
     unsigned char *input_buffer{new unsigned char[256]};
@@ -86,7 +95,17 @@ char* SensorInterface::Read()
 
     if (ResponseLength > 0)
     {
-        for (int n{5}; n < ResponseLength; n++)
+        int startIndex{0};
+        while (!isNumber((char)input_buffer[startIndex]))
+        {
+            startIndex++;
+            if (startIndex >= ResponseLength)
+            {
+                break;
+            }
+        }
+
+        for (int n{startIndex}; n < ResponseLength; n++)
         {
             if ((char)input_buffer[n] == '\r')
             {
@@ -100,7 +119,7 @@ char* SensorInterface::Read()
 
         for (int n{0}; n < opLen; n++)
         {
-            op[n] = (char)input_buffer[n + 5];
+            op[n] = (char)input_buffer[n + startIndex];
         }
         op[opLen] = '\0';
     }
@@ -144,6 +163,7 @@ void SensorInterface::loggingLoop()
 void SensorInterface::StartLogging()
 {
     cont = true;
+    RS232_cputs(portNumber, "R\r");
 
     std::thread logger(loggingLoop, this);
 
@@ -159,6 +179,7 @@ void SensorInterface::StartLogging()
     }
 
     logger.detach();
+    RS232_cputs(portNumber, "S\r");
 
 }
 
@@ -172,7 +193,7 @@ char* SensorInterface::appendCarriageReturn(const char *ip)
         op[n] = ip[n];
     }
     op[ipLen] = '\r';
-    op[ipLen +  1] = '\0';
+    op[ipLen + 1] = '\0';
     return op;
 }
 
@@ -184,51 +205,12 @@ void SensorInterface::post(const char *ip)
     post = nullptr;
 	Sleep(500);
 
-    //const int bufferLen{2048};
-
     unsigned char *input_buffer{new unsigned char[2048]};
 	int ResponseLength{RS232_PollComport(portNumber, input_buffer, 2048)};
 
 
     if (ResponseLength > 0)
     {
-        /*
-        int opLen{0};
-        int crCount{0};
-
-        for (int n{0}; n < ResponseLength; n++)
-        {   
-            if ((char)input_buffer[n] != '\r')
-            {
-                opLen++;
-            }
-            else
-            {
-                if (crCount >= 1)
-                {
-                    break;
-                }
-                crCount++;
-            }
-        }
-
-        char *op{new char[opLen + 1]};
-        int opIndex{0};
-
-        for (int n{0}; n < ResponseLength; n++)
-        {
-            if ((char)input_buffer[n] != '\r')
-            {   
-                op[opIndex] = (char)input_buffer[n];
-                opIndex++;
-            }
-        }
-        op[opLen] = '\0';
-
-        std::cout << op << '\n';
-
-        delete[] op;
-        */
         input_buffer[ResponseLength] = '\0';
         std::cout << (char*)input_buffer << '\n';
     }
