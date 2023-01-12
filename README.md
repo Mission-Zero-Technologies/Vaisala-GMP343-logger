@@ -1,6 +1,6 @@
 # Overview
 Command line interface for serial comminucation and data logging for the Vaisala GMP343 non-dispersive infrared CO<sub>2</sub> sensor, for Microsoft Windows.
-This repository uses code from the RS-232 library located [here](https://gitlab.com/Teuniz/RS-232). Code from this library is located in the `RS-232` folder and has not been modified in any way.
+This repository uses code from the RS-232 library located [here](https://gitlab.com/Teuniz/RS-232). `source/rs232.c` and `includes/rs232.h` are taken from this library and have not been modified in any way.
 
 # Compilation
 A Makefile is included in this repository for compilation. Has been tested on Windows 10 with the MinGW implementation of g++. There are no dependencies that aren't included in this repository. Simply `cd` into the cloned repository and type
