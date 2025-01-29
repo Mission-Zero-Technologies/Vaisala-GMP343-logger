@@ -1,11 +1,16 @@
 #include <iostream>
 #include <fstream>
 #include "rs232.h"
-#include <Windows.h>
 #include "flag_manager.h"
 #include <ctime>
 #include <future>
 #include "sensor_interface.h"
+
+#ifdef WIN32
+	#include "Windows.h"
+#else
+	#include <unistd.h>
+#endif
 
 int help()
 {

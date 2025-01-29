@@ -16,11 +16,13 @@ class SensorInterface
         int portNumber;
         bool cont, quiet, discard;
         std::ofstream Writer;
-        void loggingLoop();
+        friend void loggingLoop(SensorInterface *s);
         bool isWhitespace(const char ip);
         bool isNumber(const char ip);
         char* scrubWhitespace(const char *ip);
         char* appendCarriageReturn(const char *ip);
 };
+
+void loggingLoop(SensorInterface *s);
 
 #endif
